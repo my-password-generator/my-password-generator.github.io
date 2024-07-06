@@ -1,84 +1,73 @@
-const generateButton = document.getElementById('generate');
-const copyButton = document.getElementById('copy');
-const passwordsDiv = document.getElementById('passwords');
-
-generateButton.addEventListener('click', generatePasswords);
-copyButton.addEventListener('click', copyToClipboard);
+const charset = {
+    lowercase: "abcdefghijklmnopqrstuvwxyz",
+    uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    numbers: "0123456789",
+    symbols: "`~!@#$%^&*()-_=+[]{}|;:'\",.<>?/\\",
+};
 
 function generatePasswords() {
-    const lowercase = document.getElementById('lowercase').checked;
-    const uppercase = document.getElementById('uppercase').checked;
-    const numbers = document.getElementById('numbers').checked;
-    const symbols = document.getElementById('symbols').checked;
-    const unique = document.getElementById('unique').checked;
-    const similar = document.getElementById('similar').checked;
-    const omit = document.getElementById('omit').checked;
-    const passwordCount = parseInt(document.getElementById('passwordCount').value);
-    const passwordLength = parseInt(document.getElementById('passwordLength').value);
-    const seed = document.getElementById('seed').value;
+    const useLowercase = document.getElementById("lowercase").checked;
+    const useUppercase = document.getElementById("uppercase").checked;
+    const useNumbers = document.getElementById("numbers").checked;
+    const useSymbols = document.getElementById("symbols").checked;
+    const useUnique = document.getElementById("unique").checked;
+    const useSimilar = document.getElementById("similar").checked;
+    const omitYAndZ = document.getElementById("omit").checked;
+    const passwordCount = parseInt(document.getElementById("passwords").value);
+    const passwordLength = parseInt(document.getElementById("length").value);
 
-    const charset = generateCharset(lowercase, uppercase, numbers, symbols, unique, similar, omit);
+    let chars = "";
+    if (useLowercase) chars += charset.lowercase;
+    if (useUppercase) chars += charset.uppercase;
+    if (useNumbers) chars += charset.numbers;
+    if (useSymbols) chars += charset.symbols;
 
-    passwordsDiv.innerHTML = '';
+    if (omitYAndZ) {
+        chars = chars.replace(/[yzYZ]/g, "");
+    }
+
+    const passwords = [];
     for (let i = 0; i < passwordCount; i++) {
-        const password = generatePassword(passwordLength, charset, seed);
-        const passwordStrength = calculateStrength(password);
-        const passwordDiv = document.createElement('div');
-        passwordDiv.classList.add('password');
-        passwordDiv.classList.add(passwordStrength.class);
-        passwordDiv.innerText = `${password}\n${passwordStrength.text}`;
-        passwordsDiv.appendChild(passwordDiv);
+        let password = "";
+        while (password.length < passwordLength) {
+            const randomIndex = Math.floor(Math.random() * chars.length);
+            const char = chars[randomIndex];
+            if (useUnique && password.includes(char)) continue;
+            password += char;
+        }
+        passwords.push(password);
     }
+
+    displayPasswords(passwords);
 }
 
-function generateCharset(lowercase, uppercase, numbers, symbols, unique, similar, omit) {
-    let charset = '';
-    if (lowercase) charset += 'abcdefghijklmnopqrstuvwxyz';
-    if (uppercase) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    if (numbers) charset += '0123456789';
-    if (symbols) charset += '!@#$%^&*()_+~`|}{[]:;?><,./-=';
-    if (omit) charset = charset.replace(/[yzYZ]/g, '');
-    if (unique) charset = [...new Set(charset)].join('');
-    if (similar) charset = charset.replace(/[ilLI|1oO0]/g, '');
-    return charset;
-}
-
-function generatePassword(length, charset, seed) {
-    let password = '';
-    for (let i = 0; i < length; i++) {
-        const randomIndex = Math.floor(Math.random() * charset.length);
-        password += charset[randomIndex];
-    }
-    return password;
+function displayPasswords(passwords) {
+    const output = document.getElementById("output");
+    output.innerHTML = "";
+    passwords.forEach(password => {
+        const strength = calculateStrength(password);
+        const passwordElement = document.createElement("div");
+        passwordElement.innerHTML = `${password} <br><span class="password-strength">${strength}</span>`;
+        output.appendChild(passwordElement);
+    });
 }
 
 function calculateStrength(password) {
-    const length = password.length;
-    let bits = Math.log2(Math.pow(password.length, 10));
-    let strength = '';
-
-    if (bits < 54) {
-        strength = 'Weak (1 bit)';
-        classStrength = 'weak';
-    } else if (bits < 86) {
-        strength = 'Medium (54 bits)';
-        classStrength = 'medium';
-    } else if (bits < 112) {
-        strength = 'Strong (86 bits)';
-        classStrength = 'strong';
-    } else if (bits < 173) {
-        strength = 'Very strong (112 bits)';
-        classStrength = 'very-strong';
-    } else {
-        strength = 'Ultra strong (173 bits)';
-        classStrength = 'ultra-strong';
-    }
-    return { text: strength, class: classStrength };
+    const bits = Math.floor(password.length * 6.57); // Simplified entropy calculation
+    if (bits < 50) return `Weak (${bits} bits)`;
+    if (bits < 80) return `Medium (${bits} bits)`;
+    if (bits < 110) return `Strong (${bits} bits)`;
+    if (bits < 140) return `Very Strong (${bits} bits)`;
+    return `Ultra Strong (${bits} bits)`;
 }
 
 function copyToClipboard() {
-    const text = Array.from(passwordsDiv.children).map(div => div.innerText).join('\n');
-    navigator.clipboard.writeText(text).then(() => {
-        alert('Passwords copied to clipboard');
-    });
+    const output = document.getElementById("output");
+    const range = document.createRange();
+    range.selectNode(output);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand("copy");
+    window.getSelection().removeAllRanges();
+    alert("Copied to clipboard!");
 }
