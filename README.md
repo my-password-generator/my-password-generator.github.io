@@ -1,1 +1,1 @@
-# my-password-generator.io
+# my-password-generator.github.io
