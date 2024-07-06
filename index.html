@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Password Generator</h1>
+        <div class="settings">
+            <label><input type="checkbox" id="lowercase" checked> Lower case</label>
+            <label><input type="checkbox" id="uppercase" checked> Upper case</label>
+            <label><input type="checkbox" id="numbers" checked> Numbers</label>
+            <label><input type="checkbox" id="symbols" checked> Symbols</label>
+            <label><input type="checkbox" id="uniqueChars" checked> Unique characters</label>
+            <label><input type="checkbox" id="similarChars" checked> Similar characters</label>
+            <label><input type="checkbox" id="omitYz"> Omit y and z</label>
+        </div>
+        <div class="controls">
+            <label>Passwords: <input type="number" id="passwordCount" value="1" min="1"></label>
+            <label>Length: <input type="number" id="passwordLength" value="100" min="1"></label>
+            <label>Seed: <input type="text" id="seed"></label>
+        </div>
+        <button id="generateBtn">GENERATE</button>
+        <button id="copyBtn">COPY TO CLIPBOARD</button>
+        <textarea id="output" rows="10" readonly></textarea>
+        <div id="strength" class="strength">Ultra strong (506 bits)</div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
