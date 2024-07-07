@@ -61,19 +61,3 @@ Math.seedrandom = function(seed) {
     let x = Math.sin(seed) * 10000;
     return x - Math.floor(x);
 };
-
-function copyToClipboard() {
-    const passwordDisplay = document.getElementById('passwordDisplay');
-    const password = passwordDisplay.textContent;
-
-    if (!password) {
-        alert('Please generate a password first.');
-        return;
-    }
-
-    navigator.clipboard.writeText(password).then(() => {
-        alert('Password copied to clipboard');
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-    });
-                }
