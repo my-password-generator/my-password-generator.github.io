@@ -65,13 +65,15 @@ Math.seedrandom = function(seed) {
 function copyToClipboard() {
     const passwordDisplay = document.getElementById('passwordDisplay');
     const password = passwordDisplay.textContent;
-    
-    const textarea = document.createElement('textarea');
-    textarea.value = password;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
 
-    alert('Password copied to clipboard');
-}
+    if (!password) {
+        alert('Please generate a password first.');
+        return;
+    }
+
+    navigator.clipboard.writeText(password).then(() => {
+        alert('Password copied to clipboard');
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+                }
