@@ -4,151 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Password Generator</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #2c3e50;
-            color: #ecf0f1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background-color: #34495e;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        }
-        .container h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .option {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .option label {
-            flex: 1;
-            margin-left: 10px;
-        }
-        .option input[type="checkbox"] {
-            transform: scale(1.5);
-        }
-        .length-container, .seed-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .length-container input, .seed-container input {
-            width: 50px;
-            text-align: center;
-        }
-        .buttons {
-            display: flex;
-            justify-content: space-around;
-        }
-        .buttons button {
-            background-color: #1abc9c;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            color: #fff;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .buttons button:hover {
-            background-color: #16a085;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h2>Password Generator</h2>
-        <div class="option">
-            <input type="checkbox" id="lowercase" checked>
-            <label for="lowercase">Lower case</label>
-        </div>
-        <div class="option">
-            <input type="checkbox" id="uppercase" checked>
-            <label for="uppercase">Upper case</label>
-        </div>
-        <div class="option">
-            <input type="checkbox" id="numbers" checked>
-            <label for="numbers">Numbers</label>
-        </div>
-        <div class="option">
-            <input type="checkbox" id="symbols" checked>
-            <label for="symbols">Symbols: `"!?.,:;$%&@~#()<>{}[]_*-+^=/\|</label>
-        </div>
-        <div class="option">
-            <input type="checkbox" id="unique" checked>
-            <label for="unique">Unique characters</label>
-        </div>
-        <div class="option">
-            <input type="checkbox" id="similar" checked>
-            <label for="similar">Similar characters</label>
-        </div>
-        <div class="option">
-            <input type="checkbox" id="omit" checked>
-            <label for="omit">Omit y and z</label>
-        </div>
-        <div class="length-container">
+        <h1>Password Generator</h1>
+        <div class="form-group">
             <label for="length">Length:</label>
-            <input type="number" id="length" value="12" min="1">
+            <input type="number" id="length" value="12" min="4" max="32">
         </div>
-        <div class="seed-container">
-            <label for="seed">Seed:</label>
-            <input type="text" id="seed" value="abdul rasyid">
+        <div class="form-group">
+            <label><input type="checkbox" id="lower" checked> Lowercase</label>
+            <label><input type="checkbox" id="upper" checked> Uppercase</label>
+            <label><input type="checkbox" id="numbers" checked> Numbers</label>
+            <label><input type="checkbox" id="symbols" checked> Symbols</label>
         </div>
-        <div class="buttons">
-            <button onclick="generatePassword()">Generate</button>
-            <button onclick="copyToClipboard()">Copy to Clipboard</button>
+        <div class="form-group">
+            <label><input type="checkbox" id="unique"> Unique Characters</label>
+            <label><input type="checkbox" id="similar"> Exclude Similar Characters</label>
+            <label><input type="checkbox" id="omitYZ"> Omit 'y' and 'z'</label>
         </div>
+        <div class="form-group">
+            <label for="seed">Seed (optional):</label>
+            <input type="text" id="seed">
+        </div>
+        <button onclick="generatePassword()">Generate Password</button>
+        <div class="password-display" id="passwordDisplay"></div>
     </div>
-
-    <script>
-        function generatePassword() {
-            const length = document.getElementById('length').value;
-            const seed = document.getElementById('seed').value;
-            const lowercase = document.getElementById('lowercase').checked;
-            const uppercase = document.getElementById('uppercase').checked;
-            const numbers = document.getElementById('numbers').checked;
-            const symbols = document.getElementById('symbols').checked;
-            const unique = document.getElementById('unique').checked;
-            const similar = document.getElementById('similar').checked;
-            const omit = document.getElementById('omit').checked;
-
-            let charset = '';
-            if (lowercase) charset += 'abcdefghijklmnopqrstuvwxyz';
-            if (uppercase) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            if (numbers) charset += '0123456789';
-            if (symbols) charset += '`"!?.,:;$%&@~#()<>{}[]_*-+^=/\\|';
-            if (omit) charset = charset.replace(/[yzYZ]/g, '');
-
-            let password = '';
-            for (let i = 0; i < length; i++) {
-                password += charset.charAt(Math.floor(Math.random() * charset.length));
-            }
-
-            if (unique) {
-                password = Array.from(new Set(password.split(''))).join('');
-            }
-
-            alert('Generated Password: ' + password);
-        }
-
-        function copyToClipboard() {
-            const password = generatePassword();
-            navigator.clipboard.writeText(password).then(() => {
-                alert('Password copied to clipboard!');
-            }).catch(err => {
-                alert('Failed to copy password: ' + err);
-            });
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
-                </html>
+</html>
