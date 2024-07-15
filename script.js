@@ -1,44 +1,34 @@
+document.getElementById('generate').addEventListener('click', generatePassword);
+document.getElementById('copy').addEventListener('click', copyPassword);
+
+const lowerCaseChars = 'abcdefghijklmnopqrstuvwxyz';
+const upperCaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const numberChars = '0123456789';
+const symbolChars = '!@#$%^&*()_+[]{}|;:,.<>?';
+const uniqueChars = 'æøåßðđŋħĸł';
+const similarChars = 'iIl1oO0';
+const omitYZChars = 'yzYZ';
+
 function generatePassword() {
-    const length = document.getElementById('length').value;
-    const includeLowercase = document.getElementById('lowercase').checked;
-    const includeUppercase = document.getElementById('uppercase').checked;
-    const includeNumbers = document.getElementById('numbers').checked;
-    const includeSymbols = document.getElementById('symbols').checked;
-    const unique = document.getElementById('unique').checked;
-    const excludeSimilar = document.getElementById('similar').checked;
-    const omitYZ = document.getElementById('omitYZ').checked;
-    const seed = document.getElementById('seed').value;
+    let length = document.getElementById('length').value;
+    let seed = document.getElementById('seed').value;
+    let chars = '';
 
-    const lowercase = 'abcdefghijkmnopqrstuvwxyz';
-    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const numbers = '23456789';
-    const symbols = '!@#$%^&*()_+~`|}{[]:;?><,./-=';
-    const similar = 'ilLIoO01';
+    if (document.getElementById('lowercase').checked) chars += lowerCaseChars;
+    if (document.getElementById('uppercase').checked) chars += upperCaseChars;
+    if (document.getElementById('numbers').checked) chars += numberChars;
+    if (document.getElementById('symbols').checked) chars += symbolChars;
+    if (document.getElementById('unique').checked) chars += uniqueChars;
+    if (document.getElementById('similar').checked) chars = chars.replace(new RegExp(`[${similarChars}]`, 'g'), '');
+    if (document.getElementById('omitYZ').checked) chars = chars.replace(new RegExp(`[${omitYZChars}]`, 'g'), '');
 
-    let characters = '';
-    if (includeLowercase) characters += lowercase;
-    if (includeUppercase) characters += uppercase;
-    if (includeNumbers) characters += numbers;
-    if (includeSymbols) characters += symbols;
-
-    if (omitYZ) characters = characters.replace(/[yz]/gi, '');
-
-    if (excludeSimilar) {
-        for (let char of similar) {
-            characters = characters.replace(char, '');
-        }
-    }
-
-    if (unique) {
-        characters = [...new Set(characters.split(''))].join('');
-    }
-
-    let password = '';
     if (seed) {
         Math.seedrandom(seed);
     }
+
+    let password = '';
     for (let i = 0; i < length; i++) {
-        password += characters.charAt(Math.floor(Math.random() * characters.length));
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
 
     document.getElementById('password').value = password;
@@ -48,11 +38,9 @@ function copyPassword() {
     const passwordField = document.getElementById('password');
     passwordField.select();
     document.execCommand('copy');
-    alert('Password copied to clipboard');
 }
 
-// Optional: Seeded random function (if you want to use seeded random)
 Math.seedrandom = function(seed) {
     let x = Math.sin(seed) * 10000;
     return x - Math.floor(x);
-}
+};
