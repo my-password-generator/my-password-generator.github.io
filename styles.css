@@ -17,8 +17,6 @@ body {
     text-align: center;
     max-width: 400px;
     width: 100%;
-    border: 2px solid #4CAF50;
-    transition: border-color 0.3s ease;
 }
 
 h1 {
@@ -70,23 +68,4 @@ input[type="checkbox"] {
 
 .btn:hover {
     background-color: #45a049;
-}
-
-@keyframes borderAnimation {
-    0% { border-color: #4CAF50; }
-    50% { border-color: #45a049; }
-    100% { border-color: #4CAF50; }
-}
-
-@keyframes textAnimation {
-    0% { opacity: 0; transform: scale(0.9); }
-    100% { opacity: 1; transform: scale(1); }
-}
-
-.container.animate-border {
-    animation: borderAnimation 1s ease infinite;
-}
-
-textarea.animate-text {
-    animation: textAnimation 0.3s ease;
 }
