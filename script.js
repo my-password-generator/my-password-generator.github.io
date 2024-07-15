@@ -41,19 +41,7 @@ function generatePassword() {
         password += characters.charAt(Math.floor(Math.random() * characters.length));
     }
 
-    const passwordField = document.getElementById('password');
-    passwordField.value = password;
-
-    // Add animation classes
-    const container = document.querySelector('.container');
-    container.classList.add('animate-border');
-    passwordField.classList.add('animate-text');
-
-    // Remove animation classes after animation ends
-    setTimeout(() => {
-        container.classList.remove('animate-border');
-        passwordField.classList.remove('animate-text');
-    }, 1000);
+    document.getElementById('password').value = password;
 }
 
 function copyPassword() {
