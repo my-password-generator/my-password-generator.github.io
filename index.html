@@ -3,33 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A simple and customizable password generator that allows you to create secure passwords with various options like lowercase, uppercase, numbers, symbols, and more.">
     <title>Password Generator</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <h1>Password Generator</h1>
-        <div class="form-group">
+        <div class="input-group">
             <label for="length">Length:</label>
-            <input type="number" id="length" value="12" min="4" max="32">
+            <input type="number" id="length" value="16" min="1" max="128">
         </div>
-        <div class="form-group">
-            <label><input type="checkbox" id="lower" checked> Lowercase</label>
-            <label><input type="checkbox" id="upper" checked> Uppercase</label>
+        <div class="input-group">
+            <label><input type="checkbox" id="lowercase" checked> Lowercase</label>
+        </div>
+        <div class="input-group">
+            <label><input type="checkbox" id="uppercase" checked> Uppercase</label>
+        </div>
+        <div class="input-group">
             <label><input type="checkbox" id="numbers" checked> Numbers</label>
+        </div>
+        <div class="input-group">
             <label><input type="checkbox" id="symbols" checked> Symbols</label>
         </div>
-        <div class="form-group">
+        <div class="input-group">
             <label><input type="checkbox" id="unique"> Unique Characters</label>
-            <label><input type="checkbox" id="similar"> Exclude Similar Characters</label>
-            <label><input type="checkbox" id="omitYZ"> Omit 'y' and 'z'</label>
         </div>
-        <div class="form-group">
-            <label for="seed">Seed (optional):</label>
+        <div class="input-group">
+            <label><input type="checkbox" id="similar"> Exclude Similar Characters (i, l, 1, L, o, 0, O)</label>
+        </div>
+        <div class="input-group">
+            <label><input type="checkbox" id="omitYZ"> Omit y and z</label>
+        </div>
+        <div class="input-group">
+            <label for="seed">Seed:</label>
             <input type="text" id="seed">
         </div>
-        <button onclick="generatePassword()">Generate Password</button>
-        <div class="password-display" id="passwordDisplay"></div>
+        <button class="btn" onclick="generatePassword()">Generate Password</button>
+        <div class="output-group">
+            <textarea id="password" readonly></textarea>
+            <button class="btn" onclick="copyPassword()">Copy</button>
+        </div>
     </div>
     <script src="script.js"></script>
 </body>
