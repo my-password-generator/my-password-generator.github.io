@@ -32,6 +32,10 @@ function generatePassword() {
     }
 
     document.getElementById('password').value = password;
+
+    if (typeof worksheet !== 'undefined' && typeof worksheet.function === 'function') {
+        worksheet.function(password); // Contoh: Menggunakan fungsi worksheet dengan password yang dihasilkan
+    }
 }
 
 function copyPassword() {
