@@ -33,8 +33,17 @@ function generatePassword() {
 
     document.getElementById('password').value = password;
 
+    // Show strength
+    showStrength(password);
+
+    // Add animation
+    const container = document.querySelector('.container');
+    container.classList.add('animate');
+    setTimeout(() => container.classList.remove('animate'), 300);
+
+    // Call worksheet.function if defined
     if (typeof worksheet !== 'undefined' && typeof worksheet.function === 'function') {
-        worksheet.function(password); // Contoh: Menggunakan fungsi worksheet dengan password yang dihasilkan
+        worksheet.function(password);
     }
 }
 
@@ -47,4 +56,30 @@ function copyPassword() {
 Math.seedrandom = function(seed) {
     let x = Math.sin(seed) * 10000;
     return x - Math.floor(x);
+};
+
+function showStrength(password) {
+    const strengthIndicator = document.getElementById('strength');
+    let strength = 'Weak';
+    const lengthCriteria = password.length >= 12;
+    const lowerCaseCriteria = /[a-z]/.test(password);
+    const upperCaseCriteria = /[A-Z]/.test(password);
+    const numberCriteria = /\d/.test(password);
+    const symbolCriteria = /[!@#$%^&*()_+[\]{}|;:,.<>?]/.test(password);
+
+    if (lengthCriteria && lowerCaseCriteria && upperCaseCriteria && numberCriteria && symbolCriteria) {
+        strength = 'Strong';
+    } else if (lengthCriteria && (lowerCaseCriteria || upperCaseCriteria) && (numberCriteria || symbolCriteria)) {
+        strength = 'Moderate';
+    }
+
+    strengthIndicator.textContent = `Strength: ${strength}`;
+}
+
+// Define worksheet object and function
+const worksheet = {
+    function: function(password) {
+        console.log('Generated Password:', password);
+        // You can add any custom functionality here
+    }
 };
