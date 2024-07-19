@@ -37,6 +37,12 @@ h1 {
     margin-bottom: 5px;
 }
 
+input[type="checkbox"]:checked + label::before {
+    content: '✔';
+    display: inline-block;
+    color: red; /* Warna centang menjadi merah */
+}
+
 .length-container,
 .seed-container {
     margin-bottom: 15px;
@@ -55,7 +61,7 @@ h1 {
 }
 
 button {
-    background-color: #007bff;
+    background-color: #28a745; /* Warna dasar tombol: hijau */
     color: #fff;
     border: none;
     padding: 10px;
@@ -64,7 +70,16 @@ button {
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: #218838; /* Warna tombol saat hover */
+}
+
+button:focus {
+    outline: 3px solid #70db70; /* Warna outline untuk fokus */
+    outline-offset: 2px;
+}
+
+button:active {
+    background-color: #1e7e34; /* Warna tombol saat aktif */
 }
 
 .strength {
