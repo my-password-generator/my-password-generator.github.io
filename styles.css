@@ -37,12 +37,6 @@ h1 {
     margin-bottom: 5px;
 }
 
-input[type="checkbox"]:checked + label::before {
-    content: '✔';
-    display: inline-block;
-    color: red; /* Warna centang menjadi merah */
-}
-
 .length-container,
 .seed-container {
     margin-bottom: 15px;
@@ -61,7 +55,7 @@ input[type="checkbox"]:checked + label::before {
 }
 
 button {
-    background-color: #28a745; /* Warna dasar tombol: hijau */
+    background-color: #007bff; /* Warna dasar */
     color: #fff;
     border: none;
     padding: 10px;
@@ -70,19 +64,19 @@ button {
 }
 
 button:hover {
-    background-color: #218838; /* Warna tombol saat hover */
+    background-color: #0056b3; /* Warna saat hover */
 }
 
 button:focus {
-    outline: 3px solid #70db70; /* Warna outline untuk fokus */
+    outline: 3px solid #ffc107; /* Warna outline untuk fokus */
     outline-offset: 2px;
 }
 
 button:active {
-    background-color: #1e7e34; /* Warna tombol saat aktif */
+    background-color: #004080; /* Warna saat aktif */
 }
 
 .strength {
     margin-top: 15px;
     font-weight: bold;
-    }
+}
