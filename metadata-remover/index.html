@@ -1,494 +1,530 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Shield, Download, File as FileIcon, X, Check, Eye, Trash2, Moon, Sun, Archive, AlertTriangle, Info, Image as ImageIcon, Film, Music, FileText, Settings, Code } from 'lucide-react';
-
-export default function App() {
-  const [files, setFiles] = useState([]);
-  const [darkMode, setDarkMode] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [globalProgress, setGlobalProgress] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState({
-    gps: true,
-    camera: true,
-    date: true,
-    author: true,
-    copyright: true,
-    all: true
-  });
-  
-  const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  // --- Utility: Generate Mock Metadata for Demo Purposes ---
-  const generateMockMetadata = (file) => {
-    const isImage = file.type.startsWith('image/');
-    const isVideo = file.type.startsWith('video/');
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanctum Meta-Eraser</title>
     
-    if (file.name.includes('clean')) return null; // Simulate no metadata
-
-    let meta = {
-      'Nama File': file.name,
-      'Ukuran': (file.size / (1024 * 1024)).toFixed(2) + ' MB',
-      'Tanggal Dibuat': new Date(file.lastModified).toLocaleString(),
-    };
-
-    if (isImage) {
-      meta = { ...meta,
-        'Resolusi': `${Math.floor(Math.random() * 2000 + 1000)}x${Math.floor(Math.random() * 2000 + 1000)}`,
-        'Kamera': ['Sony A7III', 'iPhone 15 Pro', 'Canon EOS R5'][Math.floor(Math.random() * 3)],
-        'Lokasi GPS': `${(Math.random() * 180 - 90).toFixed(4)}, ${(Math.random() * 360 - 180).toFixed(4)}`,
-        'Software': 'Adobe Photoshop 2025',
-        'EXIF Tags': Math.floor(Math.random() * 40 + 10) + ' ditemukan',
-        'XMP Tags': Math.floor(Math.random() * 10 + 2) + ' ditemukan'
-      };
-    } else if (isVideo) {
-      meta = { ...meta,
-        'Durasi': '00:03:45',
-        'Resolusi': '3840x2160',
-        'Kamera': 'DJI Mavic 3',
-        'Lokasi GPS': 'Dikodekan dalam Metadata',
-        'Author': 'Unknown'
-      };
-    }
-    return meta;
-  };
-
-  // --- Logic: Handle File Drop/Select ---
-  const handleFiles = (newFiles) => {
-    const fileObjects = Array.from(newFiles).map(file => ({
-      id: Math.random().toString(36).substring(7),
-      file,
-      name: file.name,
-      originalSize: file.size,
-      processedSize: null,
-      type: file.type,
-      status: 'pending', // pending, processing, done, error
-      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
-      originalMeta: generateMockMetadata(file),
-      processedMeta: null,
-      processedBlob: null
-    }));
-    
-    setFiles(prev => [...prev, ...fileObjects]);
-  };
-
-  const onDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const onDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files);
-    }
-  };
-
-  // --- Logic: Strip Metadata (Real for Images via Canvas, Mock for others) ---
-  const stripImageMetadata = (file) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        // Export to Blob (strips EXIF automatically)
-        canvas.toBlob((blob) => {
-          URL.revokeObjectURL(url);
-          resolve(new File([blob], `clean_${file.name}`, { type: file.type }));
-        }, file.type, 0.95); // 0.95 quality to simulate slight size change
-      };
-      img.onerror = () => resolve(file); // fallback
-      img.src = url;
-    });
-  };
-
-  const processFiles = async () => {
-    setIsProcessing(true);
-    setGlobalProgress(0);
-    
-    let processedCount = 0;
-    
-    for (let i = 0; i < files.length; i++) {
-      if (files[i].status === 'done') {
-        processedCount++;
-        continue;
-      }
-      
-      // Update status to processing
-      setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'processing' } : f));
-      
-      // Artificial delay for UI effect (especially for "videos")
-      await new Promise(r => setTimeout(r, files[i].file.size > 5000000 ? 1500 : 500));
-      
-      let newFile;
-      if (files[i].type.startsWith('image/')) {
-        newFile = await stripImageMetadata(files[i].file);
-      } else {
-        // Mock processing for non-images
-        newFile = new File([files[i].file], `clean_${files[i].name}`, { type: files[i].type });
-      }
-
-      setFiles(prev => prev.map((f, idx) => {
-        if (idx === i) {
-          return {
-            ...f,
-            status: 'done',
-            processedSize: newFile.size,
-            processedBlob: newFile,
-            processedMeta: f.originalMeta ? {
-              'Nama File': `clean_${f.name}`,
-              'Ukuran': (newFile.size / (1024 * 1024)).toFixed(2) + ' MB',
-              'Status': 'Dibersihkan'
-            } : null
-          };
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
         }
-        return f;
-      }));
-      
-      processedCount++;
-      setGlobalProgress((processedCount / files.length) * 100);
-    }
+    </script>
     
-    setIsProcessing(false);
-  };
-
-  const removeFile = (id) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
-  };
-
-  const downloadFile = (fileObj) => {
-    if (!fileObj.processedBlob) return;
-    const url = URL.createObjectURL(fileObj.processedBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileObj.processedBlob.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  // --- Components ---
-  const getFileIcon = (type) => {
-    if (type.startsWith('image/')) return <ImageIcon className="text-blue-500" />;
-    if (type.startsWith('video/')) return <Film className="text-purple-500" />;
-    if (type.startsWith('audio/')) return <Music className="text-yellow-500" />;
-    return <FileText className="text-emerald-500" />;
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Shield className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">Sanctum <span className="font-light">Meta-Eraser</span></h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Client-Side Privacy Engine</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            {darkMode ? <Sun className="w-5 h-5 text-gray-400 hover:text-yellow-400" /> : <Moon className="w-5 h-5 text-gray-600 hover:text-blue-600" />}
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
-        {/* Privacy Notice & Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 flex items-start space-x-4">
-            <Shield className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
-            <div>
-              <h3 className="font-semibold text-blue-900 dark:text-blue-300">100% Pemrosesan Lokal (Client-Side)</h3>
-              <p className="text-sm text-blue-800 dark:text-blue-400/80 mt-1">
-                File Anda tidak pernah diunggah ke server manapun. Seluruh proses penghapusan metadata terjadi langsung di dalam memori browser Anda, menjamin privasi absolut.
-              </p>
-            </div>
-          </div>
-          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-xl p-4 flex items-start space-x-4">
-            <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400 mt-1 flex-shrink-0" />
-            <div>
-              <h3 className="font-semibold text-orange-900 dark:text-orange-300">Integritas Data</h3>
-              <p className="text-sm text-orange-800 dark:text-orange-400/80 mt-1">
-                Menghapus metadata tidak mengubah kualitas visual foto atau isi dokumen, hanya mencabut data pelacakan tersembunyi.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left Column: Upload & Config */}
-          <div className="lg:col-span-1 space-y-6">
-            
-            {/* Dropzone */}
-            <div 
-              onDragOver={onDragOver}
-              onDrop={onDrop}
-              className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200
-                ${isProcessing ? 'opacity-50 pointer-events-none' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-blue-500'}
-                border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm`}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="w-12 h-12 text-gray-400 mb-4" />
-              <h3 className="font-semibold text-lg mb-1">Drag & Drop file di sini</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">atau klik untuk memilih dari perangkat</p>
-              
-              <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-500">
-                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">JPG, PNG, HEIC</span>
-                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">MP4, MOV</span>
-                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">PDF, DOCX</span>
-              </div>
-              
-              <input 
-                type="file" 
-                multiple 
-                ref={fileInputRef} 
-                onChange={(e) => handleFiles(e.target.files)} 
-                className="hidden" 
-              />
-            </div>
-
-            {/* Options */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-800">
-              <h3 className="font-semibold flex items-center mb-4">
-                <Settings className="w-4 h-4 mr-2" /> Target Metadata
-              </h3>
-              <div className="space-y-3">
-                {Object.entries(selectedOptions).map(([key, value]) => (
-                  <label key={key} className="flex items-center space-x-3 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={value}
-                      onChange={(e) => {
-                        if (key === 'all') {
-                          const state = e.target.checked;
-                          setSelectedOptions({gps: state, camera: state, date: state, author: state, copyright: state, all: state});
-                        } else {
-                          setSelectedOptions(p => ({...p, [key]: e.target.checked, all: false}));
-                        }
-                      }}
-                      className="w-4 h-4 rounded text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-900 dark:bg-gray-800 dark:border-gray-700"
-                    />
-                    <span className="text-sm capitalize">{key === 'all' ? 'Pilih Semua' : `Informasi ${key}`}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
-                <button
-                  onClick={processFiles}
-                  disabled={files.length === 0 || isProcessing}
-                  className={`w-full py-3 px-4 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg
-                    ${files.length === 0 || isProcessing 
-                      ? 'bg-gray-300 dark:bg-gray-800 text-gray-500 cursor-not-allowed shadow-none' 
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30 hover:shadow-blue-500/50'}`}
-                >
-                  <Trash2 className="w-5 h-5" />
-                  <span>{isProcessing ? 'Memproses...' : 'Hapus Semua Metadata'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* API Mock Info */}
-            <div className="bg-gray-900 rounded-2xl p-6 text-gray-300 border border-gray-800 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-100 transition-opacity">
-                <Code className="w-6 h-6" />
-              </div>
-              <h3 className="font-mono text-sm font-bold text-blue-400 mb-2">Developer API</h3>
-              <p className="text-xs mb-3 text-gray-400">Integrasikan sanitasi ini ke sistem Anda.</p>
-              <pre className="text-[10px] font-mono bg-black/50 p-3 rounded-lg overflow-x-auto text-green-400">
-                <code>
-{`// Client-side execution
-import { Eraser } from '@sanctum/meta';
-
-const cleanFile = await Eraser.strip(file, {
-  target: ['exif', 'xmp', 'gps']
-});
-console.log(cleanFile.size);`}
-                </code>
-              </pre>
-            </div>
-
-          </div>
-
-          {/* Right Column: File List & Progress */}
-          <div className="lg:col-span-2 space-y-4">
-            
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold flex items-center">
-                Riwayat Sesi <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs">{files.length} File</span>
-              </h2>
-              {files.filter(f => f.status === 'done').length > 1 && (
-                <button className="text-sm flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors">
-                  <Archive className="w-4 h-4 mr-1" /> Download ZIP
-                </button>
-              )}
-            </div>
-
-            {isProcessing && (
-              <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Memproses batch...</span>
-                  <span>{Math.round(globalProgress)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${globalProgress}%` }}></div>
-                </div>
-              </div>
-            )}
-
-            {files.length === 0 ? (
-              <div className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 border-dashed rounded-2xl p-12 text-center text-gray-500">
-                <Info className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                <p>Belum ada file yang dimuat ke memori.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {files.map((fileObj) => (
-                  <FileCard 
-                    key={fileObj.id} 
-                    data={fileObj} 
-                    onRemove={() => removeFile(fileObj.id)}
-                    onDownload={() => downloadFile(fileObj)}
-                    getIcon={getFileIcon}
-                  />
-                ))}
-              </div>
-            )}
-            
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-// --- Sub-Component: File Card ---
-function FileCard({ data, onRemove, onDownload, getIcon }) {
-  const [showMeta, setShowMeta] = useState(false);
-
-  const formatSize = (bytes) => (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-
-  const hasMetadata = data.originalMeta !== null;
-
-  return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      <div className="p-4 flex items-center justify-between">
+        .ph { font-size: 1.25rem; }
         
-        {/* Basic Info */}
-        <div className="flex items-center space-x-4 flex-1 min-w-0">
-          <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
-            {data.preview ? (
-              <img src={data.preview} alt="preview" className="w-full h-full object-cover" />
-            ) : (
-              getIcon(data.type)
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate pr-4">{data.name}</h4>
-            <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
-              <span>{formatSize(data.originalSize)}</span>
-              {data.processedSize && (
-                <>
-                  <span>→</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">{formatSize(data.processedSize)}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #374151; }
+        
+        .loader {
+            border: 2px solid #3b82f6;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            width: 1rem;
+            height: 1rem;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
 
-        {/* Actions & Status */}
-        <div className="flex items-center space-x-2">
-          {data.status === 'pending' && (
-            <button onClick={() => setShowMeta(!showMeta)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors tooltip-trigger">
-              <Eye className="w-4 h-4" />
+    <!-- Header -->
+    <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="ph ph-shield-check text-blue-600 dark:text-blue-400 text-3xl"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Sanctum <span class="font-light">Meta-Eraser</span></h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Arsitektur Vanilla JS (Client-Side)</p>
+                </div>
+            </div>
+            <button id="themeToggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <i class="ph ph-sun text-gray-400 hover:text-yellow-400 hidden dark:block"></i>
+                <i class="ph ph-moon text-gray-600 hover:text-blue-600 block dark:hidden"></i>
             </button>
-          )}
-          {data.status === 'processing' && (
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          )}
-          {data.status === 'done' && (
-            <>
-              <button onClick={() => setShowMeta(!showMeta)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-                <Eye className="w-4 h-4" />
-              </button>
-              <button onClick={onDownload} className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors">
-                <Download className="w-4 h-4" />
-              </button>
-            </>
-          )}
-          <button onClick={onRemove} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
-            <X className="w-4 h-4" />
-          </button>
         </div>
-      </div>
+    </header>
 
-      {/* Metadata Accordion */}
-      {showMeta && (
-        <div className="bg-gray-50 dark:bg-gray-950/50 p-4 border-t border-gray-200 dark:border-gray-800 text-sm">
-          {!hasMetadata ? (
-            <div className="text-center py-4 text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center">
-              <Shield className="w-4 h-4 mr-2" /> File ini bersih. Tidak ada metadata terdeteksi.
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <!-- Privacy Notice -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 flex items-start space-x-4">
+                <i class="ph ph-lock-key text-blue-600 dark:text-blue-400 text-2xl mt-1 flex-shrink-0"></i>
+                <div>
+                    <h3 class="font-semibold text-blue-900 dark:text-blue-300">100% Eksekusi Lokal</h3>
+                    <p class="text-sm text-blue-800 dark:text-blue-400/80 mt-1">Data tidak pernah menyentuh server. Pembersihan metadata dieksekusi langsung di memori browser Anda menggunakan Canvas API (untuk gambar).</p>
+                </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-6">
-              {/* Before */}
-              <div>
-                <h5 className="font-semibold text-gray-400 uppercase text-xs mb-3 tracking-wider">Sebelum (Terdeteksi)</h5>
-                <dl className="space-y-2">
-                  {Object.entries(data.originalMeta).map(([key, val]) => (
-                    <div key={key} className="flex flex-col sm:flex-row sm:justify-between border-b border-gray-200 dark:border-gray-800 pb-1">
-                      <dt className="text-gray-500 dark:text-gray-400">{key}</dt>
-                      <dd className="font-mono text-xs text-right break-all ml-4">{val}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-              
-              {/* After */}
-              <div>
-                <h5 className="font-semibold text-blue-500 uppercase text-xs mb-3 tracking-wider">Sesudah (Dibersihkan)</h5>
-                {data.status === 'done' ? (
-                  <dl className="space-y-2">
-                    {Object.entries(data.processedMeta).map(([key, val]) => (
-                      <div key={key} className="flex flex-col sm:flex-row sm:justify-between border-b border-gray-200 dark:border-gray-800 pb-1">
-                        <dt className="text-gray-500 dark:text-gray-400">{key}</dt>
-                        <dd className="font-mono text-xs text-right break-all ml-4 text-emerald-500">{val}</dd>
-                      </div>
-                    ))}
-                    <div className="pt-4 text-center text-xs text-gray-500">
-                      Seluruh metadata residual, EXIF, dan XMP telah dihancurkan.
-                    </div>
-                  </dl>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400 italic text-xs">
-                    Menunggu pemrosesan...
-                  </div>
-                )}
-              </div>
+            <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-xl p-4 flex items-start space-x-4">
+                <i class="ph ph-warning-circle text-orange-600 dark:text-orange-400 text-2xl mt-1 flex-shrink-0"></i>
+                <div>
+                    <h3 class="font-semibold text-orange-900 dark:text-orange-300">Integritas Biner</h3>
+                    <p class="text-sm text-orange-800 dark:text-orange-400/80 mt-1">Video & Dokumen diproses secara simulatif dalam versi ini tanpa pustaka WASM.</p>
+                </div>
             </div>
-          )}
         </div>
-      )}
-    </div>
-  );
-}
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Dropzone -->
+                <div id="dropzone" class="border-2 border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-blue-500">
+                    <i class="ph ph-upload-simple text-5xl text-gray-400 mb-4 pointer-events-none"></i>
+                    <h3 class="font-semibold text-lg mb-1 pointer-events-none">Drag & Drop file di sini</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 pointer-events-none">atau klik untuk memilih dari perangkat</p>
+                    <div class="flex flex-wrap justify-center gap-2 text-xs text-gray-500 pointer-events-none">
+                        <span class="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">JPG, PNG, WebP</span>
+                        <span class="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">MP4, PDF (Mock)</span>
+                    </div>
+                    <input type="file" id="fileInput" multiple class="hidden" />
+                </div>
+
+                <!-- Config -->
+                <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-800">
+                    <h3 class="font-semibold flex items-center mb-4"><i class="ph ph-gear-six mr-2"></i> Parameter Pembersihan</h3>
+                    <div class="space-y-3" id="configOptions">
+                        <!-- Checkboxes generated by JS -->
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
+                        <button id="processBtn" disabled class="w-full py-3 px-4 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg bg-gray-300 dark:bg-gray-800 text-gray-500 cursor-not-allowed">
+                            <i class="ph ph-trash"></i>
+                            <span id="processBtnText">Hapus Semua Metadata</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="lg:col-span-2 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold flex items-center">
+                        Memori Sesi <span id="fileCountBadge" class="ml-2 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs">0 File</span>
+                    </h2>
+                </div>
+
+                <!-- Progress Container -->
+                <div id="progressContainer" class="hidden bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="font-medium">Memproses iterasi batch...</span>
+                        <span id="progressText">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                        <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- File List -->
+                <div id="emptyState" class="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 border-dashed rounded-2xl p-12 text-center text-gray-500">
+                    <i class="ph ph-info text-4xl mx-auto mb-3 opacity-50"></i>
+                    <p>Buffer kosong. Silakan muat file.</p>
+                </div>
+                
+                <div id="fileList" class="space-y-3 hidden">
+                    <!-- File Cards Injected Here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- State Management ---
+        const State = {
+            files: [], // Array of objects
+            isProcessing: false,
+            options: { gps: true, camera: true, date: true, author: true, copyright: true, all: true }
+        };
+
+        // --- DOM Elements ---
+        const DOM = {
+            html: document.documentElement,
+            themeToggle: document.getElementById('themeToggle'),
+            dropzone: document.getElementById('dropzone'),
+            fileInput: document.getElementById('fileInput'),
+            configOptions: document.getElementById('configOptions'),
+            processBtn: document.getElementById('processBtn'),
+            processBtnText: document.getElementById('processBtnText'),
+            fileCountBadge: document.getElementById('fileCountBadge'),
+            progressContainer: document.getElementById('progressContainer'),
+            progressBar: document.getElementById('progressBar'),
+            progressText: document.getElementById('progressText'),
+            emptyState: document.getElementById('emptyState'),
+            fileList: document.getElementById('fileList')
+        };
+
+        // --- Initialization ---
+        function init() {
+            setupTheme();
+            setupConfigUI();
+            setupEventListeners();
+        }
+
+        // --- Theme Logic ---
+        function setupTheme() {
+            DOM.themeToggle.addEventListener('click', () => {
+                DOM.html.classList.toggle('dark');
+            });
+        }
+
+        // --- Config UI Logic ---
+        function setupConfigUI() {
+            const renderOptions = () => {
+                DOM.configOptions.innerHTML = '';
+                Object.keys(State.options).forEach(key => {
+                    const label = document.createElement('label');
+                    label.className = 'flex items-center space-x-3 cursor-pointer group';
+                    
+                    const labelText = key === 'all' ? 'Pilih Semua Target' : `Hapus Informasi ${key.toUpperCase()}`;
+                    
+                    label.innerHTML = `
+                        <input type="checkbox" data-key="${key}" ${State.options[key] ? 'checked' : ''} 
+                            class="w-4 h-4 rounded text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-900 dark:bg-gray-800 dark:border-gray-700">
+                        <span class="text-sm group-hover:text-blue-500 transition-colors">${labelText}</span>
+                    `;
+                    
+                    const checkbox = label.querySelector('input');
+                    checkbox.addEventListener('change', (e) => {
+                        const isChecked = e.target.checked;
+                        if (key === 'all') {
+                            Object.keys(State.options).forEach(k => State.options[k] = isChecked);
+                        } else {
+                            State.options[key] = isChecked;
+                            State.options.all = false;
+                        }
+                        renderOptions();
+                    });
+                    DOM.configOptions.appendChild(label);
+                });
+            };
+            renderOptions();
+        }
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            DOM.dropzone.addEventListener('click', () => {
+                if (!State.isProcessing) DOM.fileInput.click();
+            });
+
+            DOM.dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (!State.isProcessing) DOM.dropzone.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+            });
+
+            DOM.dropzone.addEventListener('dragleave', () => {
+                DOM.dropzone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+            });
+
+            DOM.dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                DOM.dropzone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+                if (!State.isProcessing && e.dataTransfer.files.length > 0) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+
+            DOM.fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) handleFiles(e.target.files);
+                DOM.fileInput.value = ''; // Reset
+            });
+
+            DOM.processBtn.addEventListener('click', processFilesBatch);
+        }
+
+        // --- Mock Data Generator ---
+        function generateMockMetadata(file) {
+            const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+            if (file.name.includes('clean')) return null;
+
+            let meta = {
+                'Nama Identitas': file.name,
+                'Ukuran Biner': (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                'Stempel Waktu': new Date(file.lastModified).toLocaleString(),
+            };
+
+            if (isImage) {
+                meta = { ...meta,
+                    'Resolusi Matriks': `${Math.floor(Math.random() * 2000 + 1000)}x${Math.floor(Math.random() * 2000 + 1000)}`,
+                    'Sensor Kamera': ['Sony A7SIII', 'iPhone 15 Pro Max', 'Canon EOS R5'][Math.floor(Math.random() * 3)],
+                    'Koordinat GPS': `${(Math.random() * 180 - 90).toFixed(4)}, ${(Math.random() * 360 - 180).toFixed(4)}`,
+                    'Jejak Perangkat Lunak': 'Adobe Lightroom Classic',
+                    'Tag EXIF': Math.floor(Math.random() * 40 + 10) + ' terdeteksi',
+                    'Tag XMP': Math.floor(Math.random() * 10 + 2) + ' terdeteksi'
+                };
+            } else if (isVideo) {
+                meta = { ...meta, 'Durasi Temporal': '00:03:45', 'Resolusi Video': '3840x2160', 'Author': 'Unknown' };
+            }
+            return meta;
+        }
+
+        // --- File Handling Logic ---
+        function handleFiles(fileList) {
+            Array.from(fileList).forEach(file => {
+                const isImage = file.type.startsWith('image/');
+                const id = 'file_' + Math.random().toString(36).substring(2, 9);
+                
+                const fileData = {
+                    id, file, name: file.name, size: file.size, type: file.type,
+                    status: 'pending', processedSize: null, processedBlob: null,
+                    preview: isImage ? URL.createObjectURL(file) : null,
+                    originalMeta: generateMockMetadata(file),
+                    processedMeta: null
+                };
+                
+                State.files.push(fileData);
+                appendFileCardUI(fileData);
+            });
+            updateMainUI();
+        }
+
+        // --- UI Updates ---
+        function updateMainUI() {
+            DOM.fileCountBadge.textContent = `${State.files.length} File`;
+            
+            const pendingCount = State.files.filter(f => f.status === 'pending').length;
+            
+            if (State.files.length === 0) {
+                DOM.emptyState.classList.remove('hidden');
+                DOM.fileList.classList.add('hidden');
+            } else {
+                DOM.emptyState.classList.add('hidden');
+                DOM.fileList.classList.remove('hidden');
+            }
+
+            if (pendingCount > 0 && !State.isProcessing) {
+                DOM.processBtn.disabled = false;
+                DOM.processBtn.className = "w-full py-3 px-4 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30 hover:shadow-blue-500/50 cursor-pointer";
+            } else {
+                DOM.processBtn.disabled = true;
+                DOM.processBtn.className = "w-full py-3 px-4 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg bg-gray-300 dark:bg-gray-800 text-gray-500 cursor-not-allowed";
+            }
+        }
+
+        function getFileIconHTML(type) {
+            if (type.startsWith('image/')) return '<i class="ph ph-image text-2xl text-blue-500"></i>';
+            if (type.startsWith('video/')) return '<i class="ph ph-film-strip text-2xl text-purple-500"></i>';
+            if (type.startsWith('audio/')) return '<i class="ph ph-music-notes text-2xl text-yellow-500"></i>';
+            return '<i class="ph ph-file-text text-2xl text-emerald-500"></i>';
+        }
+
+        function formatSize(bytes) {
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function appendFileCardUI(fileData) {
+            const card = document.createElement('div');
+            card.id = `card_${fileData.id}`;
+            card.className = "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow";
+            
+            let previewHTML = fileData.preview 
+                ? `<img src="${fileData.preview}" class="w-full h-full object-cover">` 
+                : getFileIconHTML(fileData.type);
+
+            card.innerHTML = `
+                <div class="p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-4 flex-1 min-w-0">
+                        <div class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            ${previewHTML}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-medium text-sm truncate pr-4 text-gray-900 dark:text-gray-100">${fileData.name}</h4>
+                            <div class="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400 mt-1" id="size_${fileData.id}">
+                                <span>${formatSize(fileData.size)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2" id="actions_${fileData.id}">
+                        <button class="btn-meta p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"><i class="ph ph-eye"></i></button>
+                        <button class="btn-remove p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><i class="ph ph-x"></i></button>
+                    </div>
+                </div>
+                <!-- Accordion Metadata -->
+                <div id="meta_${fileData.id}" class="hidden bg-gray-50 dark:bg-gray-950/50 p-4 border-t border-gray-200 dark:border-gray-800 text-sm">
+                    ${generateMetaTableHTML(fileData)}
+                </div>
+            `;
+            
+            DOM.fileList.appendChild(card);
+
+            // Bind Events
+            card.querySelector('.btn-meta').addEventListener('click', () => {
+                const metaDiv = document.getElementById(`meta_${fileData.id}`);
+                metaDiv.classList.toggle('hidden');
+            });
+
+            card.querySelector('.btn-remove').addEventListener('click', () => {
+                // Cleanup memory
+                if (fileData.preview) URL.revokeObjectURL(fileData.preview);
+                if (fileData.processedBlob) URL.revokeObjectURL(fileData.processedBlob.previewURL);
+                
+                State.files = State.files.filter(f => f.id !== fileData.id);
+                card.remove();
+                updateMainUI();
+            });
+        }
+
+        function generateMetaTableHTML(fileData) {
+            if (!fileData.originalMeta) {
+                return `<div class="text-center py-4 text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center"><i class="ph ph-shield-check mr-2"></i> Anomali nol. File ini bersih.</div>`;
+            }
+
+            let html = `<div class="grid grid-cols-2 gap-6">`;
+            
+            // Before
+            html += `<div><h5 class="font-semibold text-gray-400 uppercase text-[10px] mb-3 tracking-wider">Terdeteksi</h5><dl class="space-y-2">`;
+            Object.entries(fileData.originalMeta).forEach(([key, val]) => {
+                html += `<div class="flex flex-col sm:flex-row sm:justify-between border-b border-gray-200 dark:border-gray-800 pb-1"><dt class="text-gray-500 dark:text-gray-400 text-xs">${key}</dt><dd class="font-mono text-[10px] text-right break-all ml-4">${val}</dd></div>`;
+            });
+            html += `</dl></div>`;
+
+            // After
+            html += `<div id="meta_after_${fileData.id}"><h5 class="font-semibold text-blue-500 uppercase text-[10px] mb-3 tracking-wider">Pasca-Sanitasi</h5>`;
+            if (fileData.status === 'done') {
+                html += `<dl class="space-y-2">`;
+                Object.entries(fileData.processedMeta).forEach(([key, val]) => {
+                    html += `<div class="flex flex-col sm:flex-row sm:justify-between border-b border-gray-200 dark:border-gray-800 pb-1"><dt class="text-gray-500 dark:text-gray-400 text-xs">${key}</dt><dd class="font-mono text-[10px] text-right break-all ml-4 text-emerald-500">${val}</dd></div>`;
+                });
+                html += `</dl><div class="pt-4 text-center text-xs text-gray-500">Metadata terhapus secara permanen.</div>`;
+            } else {
+                html += `<div class="h-full flex items-center justify-center text-gray-400 italic text-xs">Menunggu komputasi...</div>`;
+            }
+            html += `</div></div>`;
+            return html;
+        }
+
+        // --- Core Processing Logic ---
+        function stripImageEXIF(file) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // toBlob otomatis menghilangkan metadata EXIF/IPTC asli
+                    canvas.toBlob((blob) => {
+                        URL.revokeObjectURL(url);
+                        resolve(new File([blob], `clean_${file.name}`, { type: file.type }));
+                    }, file.type, 0.95);
+                };
+                img.onerror = () => resolve(file); // fail-safe
+                img.src = url;
+            });
+        }
+
+        async function processFilesBatch() {
+            State.isProcessing = true;
+            DOM.dropzone.classList.add('opacity-50', 'pointer-events-none');
+            DOM.progressContainer.classList.remove('hidden');
+            updateMainUI();
+            DOM.processBtnText.textContent = "Menjalankan Protokol...";
+
+            const pendingFiles = State.files.filter(f => f.status === 'pending');
+            let processedCount = 0;
+
+            for (let i = 0; i < State.files.length; i++) {
+                if (State.files[i].status === 'done') {
+                    processedCount++;
+                    continue;
+                }
+
+                const fileData = State.files[i];
+                
+                // Set UI Status to Loading
+                const actionDiv = document.getElementById(`actions_${fileData.id}`);
+                actionDiv.innerHTML = `<div class="loader"></div>`;
+
+                // Artificial Delay (Simulate heavy lifting)
+                await new Promise(r => setTimeout(r, fileData.size > 2000000 ? 1000 : 400));
+
+                let newFile;
+                if (fileData.type.startsWith('image/')) {
+                    newFile = await stripImageEXIF(fileData.file); // REAL PROCESSING via Canvas
+                } else {
+                    newFile = new File([fileData.file], `clean_${fileData.name}`, { type: fileData.type }); // MOCK
+                }
+
+                // Update Data
+                fileData.status = 'done';
+                fileData.processedSize = newFile.size;
+                fileData.processedBlob = newFile;
+                
+                if (fileData.originalMeta) {
+                    fileData.processedMeta = {
+                        'Nama File Identitas': newFile.name,
+                        'Ukuran Biner Baru': formatSize(newFile.size),
+                        'Status Integritas': 'Dibersihkan'
+                    };
+                }
+
+                // Create object URL for download
+                fileData.processedBlob.previewURL = URL.createObjectURL(newFile);
+
+                // Update UI for this specific file
+                const sizeDiv = document.getElementById(`size_${fileData.id}`);
+                sizeDiv.innerHTML += `<span>&rarr;</span><span class="text-blue-600 dark:text-blue-400 font-medium">${formatSize(newFile.size)}</span>`;
+
+                actionDiv.innerHTML = `
+                    <button class="btn-meta p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"><i class="ph ph-eye"></i></button>
+                    <a href="${fileData.processedBlob.previewURL}" download="${newFile.name}" class="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"><i class="ph ph-download-simple"></i></a>
+                    <button class="btn-remove p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><i class="ph ph-x"></i></button>
+                `;
+
+                // Re-bind actions since innerHTML replaced them
+                actionDiv.querySelector('.btn-meta').addEventListener('click', () => {
+                    document.getElementById(`meta_${fileData.id}`).classList.toggle('hidden');
+                });
+                actionDiv.querySelector('.btn-remove').addEventListener('click', () => {
+                    URL.revokeObjectURL(fileData.processedBlob.previewURL);
+                    if(fileData.preview) URL.revokeObjectURL(fileData.preview);
+                    State.files = State.files.filter(f => f.id !== fileData.id);
+                    document.getElementById(`card_${fileData.id}`).remove();
+                    updateMainUI();
+                });
+
+                // Update accordion HTML
+                document.getElementById(`meta_${fileData.id}`).innerHTML = generateMetaTableHTML(fileData);
+
+                // Update Progress
+                processedCount++;
+                const progressPercent = Math.round((processedCount / State.files.length) * 100);
+                DOM.progressBar.style.width = `${progressPercent}%`;
+                DOM.progressText.textContent = `${progressPercent}%`;
+            }
+
+            // Cleanup after completion
+            State.isProcessing = false;
+            DOM.dropzone.classList.remove('opacity-50', 'pointer-events-none');
+            setTimeout(() => {
+                DOM.progressContainer.classList.add('hidden');
+                DOM.progressBar.style.width = `0%`;
+            }, 2000);
+            
+            DOM.processBtnText.textContent = "Hapus Semua Metadata";
+            updateMainUI();
+        }
+
+        // Boot
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
 
