@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CopyPaste Metadata | Local In-Browser Engine</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- piexifjs for reading/writing JPEG EXIF data locally -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.min.js"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .drop-zone { border: 2px dashed #334155; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.active { border-color: #3b82f6; background-color: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        // --- ICONS (Inline SVG for stability in single-file architecture) ---
+        const Icons = {
+            Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            Shield: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+            Alert: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+            Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+            X: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        };
+
+        // --- UTILS ---
+        const formatBytes = (bytes, decimals = 2) => {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        };
+
+        const loadFileAsDataURL = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+            });
+        };
+
+        // Get human readable tag names from piexif
+        const getTagName = (ifd, tagId) => {
+            if (piexif.TAGS[ifd] && piexif.TAGS[ifd][tagId]) {
+                return piexif.TAGS[ifd][tagId].name;
+            }
+            return `Unknown Tag (${tagId})`;
+        };
+
+        // Format values for display
+        const formatValue = (val) => {
+            if (Array.isArray(val)) {
+                if (val.length > 5) return `[Array of ${val.length} items]`;
+                return val.map(v => Array.isArray(v) ? `${v[0]}/${v[1]}` : v).join(', ');
+            }
+            if (typeof val === 'string') return val.replace(/\0/g, ''); // Remove null bytes
+            return val;
+        };
+
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
+            const [sourceFile, setSourceFile] = useState(null);
+            const [sourceMeta, setSourceMeta] = useState(null);
+            
+            const [targetFile, setTargetFile] = useState(null);
+            const [targetMeta, setTargetMeta] = useState(null);
+            
+            // Selection state: { IFD: { tagId: boolean } }
+            const [selectedTags, setSelectedTags] = useState({});
+            
+            const [appState, setAppState] = useState('select'); // select, review, result
+            const [resultFile, setResultFile] = useState(null);
+            const [validationLogs, setValidationLogs] = useState([]);
+            const [errorMsg, setErrorMsg] = useState(null);
+
+            // --- FILE HANDLING ---
+            const handleImageUpload = async (file, type) => {
+                if (!file.type.match('image/jpeg')) {
+                    setErrorMsg(`Format tidak didukung untuk MVP. Hanya JPEG/JPG yang diizinkan.`);
+                    return;
+                }
+                setErrorMsg(null);
+
+                try {
+                    const dataURL = await loadFileAsDataURL(file);
+                    
+                    let meta = null;
+                    try {
+                        meta = piexif.load(dataURL);
+                    } catch (e) {
+                        console.warn("No EXIF found or malformed.", e);
+                        meta = { "0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "Interop": {} };
+                    }
+
+                    const imgObj = {
+                        file,
+                        dataURL,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        meta: meta
+                    };
+
+                    if (type === 'source') {
+                        setSourceFile(imgObj);
+                        setSourceMeta(meta);
+                        // Initialize selected tags, excluding GPS by default (Privacy)
+                        const initialSelection = {};
+                        ['0th', 'Exif'].forEach(ifd => {
+                            if (meta[ifd]) {
+                                initialSelection[ifd] = {};
+                                Object.keys(meta[ifd]).forEach(tag => initialSelection[ifd][tag] = true);
+                            }
+                        });
+                        // Add GPS but unchecked
+                        if (meta.GPS && Object.keys(meta.GPS).length > 0) {
+                            initialSelection.GPS = {};
+                            Object.keys(meta.GPS).forEach(tag => initialSelection.GPS[tag] = false);
+                        }
+                        setSelectedTags(initialSelection);
+                    } else {
+                        setTargetFile(imgObj);
+                        setTargetMeta(meta);
+                    }
+                } catch (err) {
+                    setErrorMsg(`Gagal memproses file: ${err.message}`);
+                }
+            };
+
+            const handleTagToggle = (ifd, tagId) => {
+                setSelectedTags(prev => ({
+                    ...prev,
+                    [ifd]: {
+                        ...prev[ifd],
+                        [tagId]: !prev[ifd][tagId]
+                    }
+                }));
+            };
+
+            const toggleCategory = (ifd, state) => {
+                if (!sourceMeta[ifd]) return;
+                setSelectedTags(prev => {
+                    const newState = { ...prev };
+                    if (!newState[ifd]) newState[ifd] = {};
+                    Object.keys(sourceMeta[ifd]).forEach(tag => {
+                        newState[ifd][tag] = state;
+                    });
+                    return newState;
+                });
+            };
+
+            // --- PROCESSING LOGIC ---
+            const generatePreview = () => {
+                let hasSelection = false;
+                Object.values(selectedTags).forEach(ifd => {
+                    Object.values(ifd).forEach(val => { if (val) hasSelection = true; });
+                });
+
+                if (!hasSelection) {
+                    setErrorMsg("Tidak ada metadata yang dipilih untuk disalin.");
+                    return;
+                }
+                setAppState('review');
+            };
+
+            const applyMetadata = async () => {
+                setAppState('processing');
+                
+                try {
+                    // Deep copy target meta as base, or create empty structure
+                    let newMeta = JSON.parse(JSON.stringify(targetMeta || { "0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "Interop": {} }));
+                    
+                    const logs = [];
+
+                    // Apply selected tags
+                    for (const ifd in selectedTags) {
+                        if (!newMeta[ifd]) newMeta[ifd] = {};
+                        for (const tagId in selectedTags[ifd]) {
+                            if (selectedTags[ifd][tagId]) {
+                                const val = sourceMeta[ifd][tagId];
+                                newMeta[ifd][tagId] = val;
+                            }
+                        }
+                    }
+
+                    // Dump and Insert
+                    const newExifBytes = piexif.dump(newMeta);
+                    const newDataURL = piexif.insert(newExifBytes, targetFile.dataURL);
+
+                    // Validation Phase
+                    let validationMeta;
+                    try {
+                        validationMeta = piexif.load(newDataURL);
+                    } catch (e) {
+                        throw new Error("Gagal membaca kembali metadata yang ditulis. File mungkin korup.");
+                    }
+
+                    let successCount = 0;
+                    let failCount = 0;
+
+                    for (const ifd in selectedTags) {
+                        for (const tagId in selectedTags[ifd]) {
+                            if (selectedTags[ifd][tagId]) {
+                                const tagName = getTagName(ifd, tagId);
+                                const expected = formatValue(sourceMeta[ifd][tagId]);
+                                const actualRaw = validationMeta[ifd] ? validationMeta[ifd][tagId] : undefined;
+                                const actual = formatValue(actualRaw);
+
+                                // Complex objects (arrays) comparison approximation for MVP
+                                if (actualRaw !== undefined) {
+                                    logs.push({ status: 'success', msg: `${tagName} berhasil ditulis.` });
+                                    successCount++;
+                                } else {
+                                    logs.push({ status: 'error', msg: `Gagal menulis ${tagName}.` });
+                                    failCount++;
+                                }
+                            }
+                        }
+                    }
+
+                    // Convert dataURL to Blob for downloading
+                    const response = await fetch(newDataURL);
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+
+                    const originalName = targetFile.name.substring(0, targetFile.name.lastIndexOf('.')) || targetFile.name;
+                    const resultName = `${originalName}_metadata.jpg`;
+
+                    setResultFile({ url: blobUrl, name: resultName, successCount, failCount });
+                    setValidationLogs(logs);
+                    setAppState('result');
+
+                } catch (err) {
+                    setErrorMsg(`Gagal memproses metadata: ${err.message}`);
+                    setAppState('select');
+                }
+            };
+
+            const resetApp = () => {
+                if (resultFile && resultFile.url) URL.revokeObjectURL(resultFile.url);
+                setAppState('select');
+                setResultFile(null);
+                setValidationLogs([]);
+            };
+
+
+            // --- UI COMPONENTS ---
+            const DropZone = ({ title, desc, onUpload, file, type }) => {
+                const [isDragging, setIsDragging] = useState(false);
+                const inputRef = useRef(null);
+
+                const handleDrop = (e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        onUpload(e.dataTransfer.files[0], type);
+                    }
+                };
+
+                const handlePaste = (e) => {
+                    if (e.clipboardData.files.length > 0) {
+                        onUpload(e.clipboardData.files[0], type);
+                    }
+                };
+
+                useEffect(() => {
+                    document.addEventListener('paste', handlePaste);
+                    return () => document.removeEventListener('paste', handlePaste);
+                }, []);
+
+                return (
+                    <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+                        <div className="bg-slate-800 p-3 border-b border-slate-700">
+                            <h3 className="font-semibold text-sm text-slate-300">{title}</h3>
+                        </div>
+                        
+                        {!file ? (
+                            <div 
+                                className={`flex-1 flex flex-col items-center justify-center p-8 m-4 rounded-lg drop-zone cursor-pointer ${isDragging ? 'active' : ''}`}
+                                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                onDragLeave={() => setIsDragging(false)}
+                                onDrop={handleDrop}
+                                onClick={() => inputRef.current.click()}
+                            >
+                                <Icons.Upload />
+                                <p className="mt-4 text-sm text-slate-400 font-medium">Click, drag & drop, or paste image</p>
+                                <p className="mt-1 text-xs text-slate-500">Only JPG/JPEG supported</p>
+                                <input type="file" ref={inputRef} className="hidden" accept="image/jpeg, image/jpg" onChange={(e) => onUpload(e.target.files[0], type)} />
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex flex-col p-4">
+                                <div className="flex gap-4 items-start">
+                                    <img src={file.dataURL} alt="Preview" className="w-32 h-32 object-cover rounded-lg border border-slate-700 shadow-md" />
+                                    <div className="flex-1 text-sm space-y-2 text-slate-300">
+                                        <div className="truncate font-mono bg-slate-900 p-1.5 rounded">{file.name}</div>
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div><span className="text-slate-500">Size:</span> {formatBytes(file.size)}</div>
+                                            <div><span className="text-slate-500">Type:</span> {file.type}</div>
+                                        </div>
+                                        <button onClick={() => {
+                                            if (type === 'source') { setSourceFile(null); setSourceMeta(null); setSelectedTags({}); }
+                                            else { setTargetFile(null); setTargetMeta(null); }
+                                        }} className="mt-2 text-xs flex items-center gap-1 text-red-400 hover:text-red-300">
+                                            <Icons.Refresh /> Ganti Foto
+                                        </button>
+                                    </div>
+                                </div>
+                                {type === 'target' && targetMeta && (
+                                    <div className="mt-4 text-xs text-slate-400">
+                                        <div className="font-semibold mb-1 text-slate-300">Target Metadata Asli:</div>
+                                        {Object.keys(targetMeta).some(ifd => targetMeta[ifd] && Object.keys(targetMeta[ifd]).length > 0) 
+                                            ? "Metadata ditemukan. Akan ditimpa jika ada konflik." 
+                                            : "Tidak ada metadata signifikan."}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            const RenderMetadataSelector = () => {
+                if (!sourceMeta) return null;
+                
+                const ifds = ['0th', 'Exif', 'GPS'];
+                const hasData = ifds.some(ifd => sourceMeta[ifd] && Object.keys(sourceMeta[ifd]).length > 0);
+
+                if (!hasData) return (
+                    <div className="p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg text-yellow-500 text-sm flex gap-2">
+                        <Icons.Alert /> Tidak ada metadata didukung (EXIF/GPS) yang ditemukan pada foto sumber.
+                    </div>
+                );
+
+                return (
+                    <div className="bg-slate-800/50 border border-slate-700 rounded-xl flex flex-col h-[500px]">
+                        <div className="bg-slate-800 p-3 border-b border-slate-700 flex justify-between items-center">
+                            <h3 className="font-semibold text-sm text-slate-300">Metadata Selection</h3>
+                            <div className="flex gap-2">
+                                <button onClick={() => {toggleCategory('0th', true); toggleCategory('Exif', true); toggleCategory('GPS', false);}} className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">Default</button>
+                                <button onClick={() => {toggleCategory('0th', true); toggleCategory('Exif', true); toggleCategory('GPS', true);}} className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">All</button>
+                                <button onClick={() => {toggleCategory('0th', false); toggleCategory('Exif', false); toggleCategory('GPS', false);}} className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">None</button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+                            {ifds.map(ifd => {
+                                if (!sourceMeta[ifd] || Object.keys(sourceMeta[ifd]).length === 0) return null;
+                                return (
+                                    <div key={ifd} className="space-y-2">
+                                        <div className="flex items-center gap-2 border-b border-slate-700 pb-2">
+                                            <h4 className="font-semibold text-blue-400 text-sm">{ifd === '0th' ? 'Image Information (IFD0)' : ifd}</h4>
+                                            {ifd === 'GPS' && <span className="text-[10px] bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded ml-auto flex items-center gap-1"><Icons.Alert /> Privacy Warning</span>}
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            {Object.keys(sourceMeta[ifd]).map(tagId => {
+                                                const isSelected = selectedTags[ifd] && selectedTags[ifd][tagId];
+                                                const valStr = formatValue(sourceMeta[ifd][tagId]);
+                                                return (
+                                                    <label key={tagId} className={`flex items-start gap-3 p-2 rounded cursor-pointer border ${isSelected ? 'bg-blue-900/20 border-blue-800/50' : 'bg-slate-900/50 border-transparent hover:bg-slate-800'}`}>
+                                                        <input type="checkbox" className="mt-1 accent-blue-500" 
+                                                            checked={isSelected || false}
+                                                            onChange={() => handleTagToggle(ifd, tagId)}
+                                                        />
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-xs font-semibold text-slate-300 truncate">{getTagName(ifd, tagId)}</div>
+                                                            <div className="text-xs text-slate-500 truncate font-mono mt-0.5">{valStr}</div>
+                                                        </div>
+                                                    </label>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            };
+
+            const ReviewPanel = () => {
+                let changes = [];
+                for (const ifd in selectedTags) {
+                    for (const tagId in selectedTags[ifd]) {
+                        if (selectedTags[ifd][tagId]) {
+                            const sourceVal = formatValue(sourceMeta[ifd][tagId]);
+                            const targetVal = targetMeta[ifd] ? formatValue(targetMeta[ifd][tagId]) : undefined;
+                            
+                            let status = 'New';
+                            let statusColor = 'text-green-400 bg-green-400/10';
+                            if (targetVal !== undefined) {
+                                if (sourceVal === targetVal) {
+                                    status = 'Same';
+                                    statusColor = 'text-slate-400 bg-slate-400/10';
+                                } else {
+                                    status = 'Replace';
+                                    statusColor = 'text-yellow-400 bg-yellow-400/10';
+                                }
+                            }
+
+                            changes.push({
+                                name: getTagName(ifd, tagId),
+                                sourceVal,
+                                targetVal: targetVal || 'None',
+                                status,
+                                statusColor
+                            });
+                        }
+                    }
+                }
+
+                return (
+                    <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden max-w-4xl mx-auto w-full">
+                        <div className="bg-slate-800 p-4 border-b border-slate-700">
+                            <h3 className="font-semibold text-lg text-slate-200">Review Metadata Changes</h3>
+                            <p className="text-sm text-slate-400">{changes.length} fields will be applied to target image.</p>
+                        </div>
+                        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar p-0">
+                            <table className="w-full text-left border-collapse text-sm">
+                                <thead className="bg-slate-900/50 text-slate-400 sticky top-0">
+                                    <tr>
+                                        <th className="p-3 font-medium border-b border-slate-700">Metadata</th>
+                                        <th className="p-3 font-medium border-b border-slate-700">Source Value</th>
+                                        <th className="p-3 font-medium border-b border-slate-700">Target Value</th>
+                                        <th className="p-3 font-medium border-b border-slate-700">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {changes.map((c, i) => (
+                                        <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-800/50 transition">
+                                            <td className="p-3 font-semibold text-slate-300">{c.name}</td>
+                                            <td className="p-3 text-slate-400 font-mono text-xs max-w-[200px] truncate" title={c.sourceVal}>{c.sourceVal}</td>
+                                            <td className="p-3 text-slate-500 font-mono text-xs max-w-[200px] truncate line-through" title={c.targetVal}>{c.targetVal}</td>
+                                            <td className="p-3">
+                                                <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${c.statusColor}`}>{c.status}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="p-4 bg-slate-900/50 border-t border-slate-700 flex justify-end gap-3">
+                            <button onClick={() => setAppState('select')} className="px-4 py-2 rounded font-medium text-sm text-slate-300 bg-slate-700 hover:bg-slate-600 transition">Batalkan</button>
+                            <button onClick={applyMetadata} className="px-4 py-2 rounded font-medium text-sm text-white bg-blue-600 hover:bg-blue-500 transition flex items-center gap-2">
+                                Apply Metadata <Icons.Check />
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            const ResultPanel = () => {
+                return (
+                    <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden max-w-2xl mx-auto w-full text-center p-8">
+                        <div className="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+                            <Icons.Check />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Pemrosesan Selesai</h2>
+                        <p className="text-slate-400 text-sm mb-6">File berhasil dimodifikasi di memory perangkat Anda.</p>
+                        
+                        <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-8">
+                            <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
+                                <div className="text-2xl font-mono text-green-400">{resultFile.successCount}</div>
+                                <div className="text-xs text-slate-500 uppercase tracking-wider mt-1">Berhasil</div>
+                            </div>
+                            <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
+                                <div className="text-2xl font-mono text-red-400">{resultFile.failCount}</div>
+                                <div className="text-xs text-slate-500 uppercase tracking-wider mt-1">Gagal</div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                            <a href={resultFile.url} download={resultFile.name} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-medium transition shadow-lg shadow-blue-900/20">
+                                <Icons.Download /> Unduh Hasil
+                            </a>
+                            <button onClick={resetApp} className="w-full py-3 rounded-lg font-medium text-sm text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 transition">
+                                Proses Foto Baru
+                            </button>
+                        </div>
+
+                        {validationLogs.length > 0 && (
+                            <div className="mt-8 text-left bg-slate-900 p-4 rounded-lg border border-slate-700 max-h-40 overflow-y-auto custom-scrollbar">
+                                <h4 className="text-xs font-semibold text-slate-400 mb-2 uppercase">Log Validasi</h4>
+                                {validationLogs.map((log, i) => (
+                                    <div key={i} className={`text-xs font-mono mb-1 flex items-center gap-2 ${log.status === 'success' ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                                        {log.status === 'success' ? <Icons.Check /> : <Icons.X />} {log.msg}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    {/* Header */}
+                    <header className="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-10">
+                        <div className="max-w-7xl mx-auto flex items-center justify-between">
+                            <div>
+                                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">CopyPaste Metadata</h1>
+                                <p className="text-xs text-slate-500 mt-1">Local In-Browser EXIF Engine</p>
+                            </div>
+                            <div className="flex items-center gap-2 bg-blue-900/20 text-blue-400 border border-blue-900/50 px-3 py-1.5 rounded-full text-xs font-medium">
+                                <Icons.Shield />
+                                <span className="hidden sm:inline">100% Client-Side. No Server Uploads.</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+                        {errorMsg && (
+                            <div className="mb-6 p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400 text-sm flex gap-3 items-center shadow-lg">
+                                <Icons.Alert /> {errorMsg}
+                                <button onClick={() => setErrorMsg(null)} className="ml-auto hover:text-red-300"><Icons.X /></button>
+                            </div>
+                        )}
+
+                        {appState === 'select' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                {/* Left Column: Uploads */}
+                                <div className="lg:col-span-5 flex flex-col gap-6">
+                                    <DropZone title="Source Photo — Metadata to Copy" file={sourceFile} type="source" onUpload={handleImageUpload} />
+                                    <div className="flex justify-center -my-2 z-10 relative pointer-events-none">
+                                        <div className="bg-slate-900 border border-slate-700 p-2 rounded-full text-slate-500 shadow-xl">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+                                        </div>
+                                    </div>
+                                    <DropZone title="Target Photo — Metadata Destination" file={targetFile} type="target" onUpload={handleImageUpload} />
+                                </div>
+
+                                {/* Right Column: Selector & Action */}
+                                <div className="lg:col-span-7 flex flex-col h-full gap-6">
+                                    {sourceFile ? (
+                                        <>
+                                            <RenderMetadataSelector />
+                                            <div className="mt-auto bg-slate-800/80 p-4 border border-slate-700 rounded-xl flex justify-between items-center backdrop-blur">
+                                                <div className="text-sm text-slate-400">
+                                                    Target Status: {targetFile ? <span className="text-green-400 font-medium">Ready</span> : <span className="text-yellow-500">Waiting for image...</span>}
+                                                </div>
+                                                <button 
+                                                    onClick={generatePreview}
+                                                    disabled={!targetFile}
+                                                    className={`px-6 py-2.5 rounded-lg font-semibold transition ${!targetFile ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/30'}`}
+                                                >
+                                                    Review Changes
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="h-full border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-500 text-sm">
+                                            Upload Source Photo untuk melihat metadata.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {appState === 'review' && <ReviewPanel />}
+                        
+                        {appState === 'processing' && (
+                            <div className="flex flex-col items-center justify-center py-20 text-blue-400">
+                                <svg className="animate-spin h-10 w-10 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <p className="font-mono text-sm animate-pulse">Menyuntikkan bitstream metadata...</p>
+                            </div>
+                        )}
+
+                        {appState === 'result' && <ResultPanel />}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
