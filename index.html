@@ -1,161 +1,118 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UtilitiBox | Instrumen Presisi Digital</title>
-    <meta name="description" content="Koleksi alat utilitas client-side untuk keamanan dan privasi.">
-    
-    <!-- Tailwind CSS -->
+    <title>UtilitiBox - Kumpulan Alat Gratis</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
                     colors: {
-                        void: '#050505', // Deep space black
-                        neon: '#3b82f6', // Cyberpunk blue
+                        void: '#0f172a', // Deep space background
+                        stellar: '#38bdf8', // Neon blue accents
+                        nebula: '#1e293b' // Card background
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
                     }
                 }
             }
         }
     </script>
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
     <style>
-        body { background-color: theme('colors.void'); }
-        /* Matriks Grid Background */
-        .bg-grid {
-            background-size: 40px 40px;
-            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
-            -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+        body {
+            background-color: #050505;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.05) 0, transparent 50%);
+            color: #e2e8f0;
         }
-        
-        /* Card Hover Glow */
         .cyber-card {
             transition: all 0.3s ease;
         }
         .cyber-card:hover {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
-            border-color: rgba(59, 130, 246, 0.4);
-            transform: translateY(-2px);
+            transform: translateY(-5px);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
+            border-color: #38bdf8;
         }
     </style>
 </head>
-<body class="text-gray-300 font-sans min-h-screen flex flex-col relative selection:bg-neon selection:text-void">
-    
-    <!-- Background Layer -->
-    <div class="fixed inset-0 bg-grid pointer-events-none z-0"></div>
-    <div class="fixed inset-0 bg-gradient-to-b from-void via-void/90 to-void pointer-events-none z-0"></div>
+<body class="min-h-screen flex flex-col items-center justify-center p-6 antialiased font-sans">
 
-    <!-- Header -->
-    <header class="relative z-10 border-b border-gray-800/60 bg-void/80 backdrop-blur-md">
-        <div class="max-w-5xl mx-auto px-6 h-20 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gray-900 border border-gray-700 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.5)]">
-                    <i class="ph ph-cube text-2xl text-neon"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight text-gray-100">Utiliti<span class="text-neon">Box</span></h1>
-                    <p class="text-[10px] font-mono text-gray-500 tracking-widest uppercase">Nexus.01 // Sistem Aktif</p>
-                </div>
-            </div>
-            
-            <a href="https://github.com/utilitibox" target="_blank" rel="noopener noreferrer" class="p-2 text-gray-400 hover:text-white transition-colors">
-                <i class="ph ph-github-logo text-2xl"></i>
-            </a>
+    <!-- Header Section -->
+    <header class="max-w-4xl w-full text-center mb-12">
+        <div class="inline-flex items-center justify-center p-4 bg-nebula rounded-2xl mb-6 border border-slate-800 shadow-lg">
+            <i data-lucide="box" class="w-12 h-12 text-stellar"></i>
         </div>
+        <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4 font-mono">
+            Utiliti<span class="text-stellar">Box</span>
+        </h1>
+        <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+            Koleksi alat utilitas presisi tinggi untuk mengamankan data dan mempercepat alur kerja Anda. Gratis, berbasis browser, dan tanpa jejak.
+        </p>
     </header>
 
-    <!-- Main Content -->
-    <main class="relative z-10 flex-grow flex flex-col items-center justify-center py-20 px-6">
+    <!-- Grid Layout for Tools -->
+    <main class="max-w-5xl w-full grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        <!-- Hero Section -->
-        <div class="text-center max-w-2xl mx-auto mb-16 space-y-6">
-            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full border border-emerald-900/50 bg-emerald-900/20 text-emerald-400 text-xs font-mono mb-4">
-                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span>100% Client-Side Processing</span>
+        <!-- Tool 1: Password Generator -->
+        <a href="https://utilitibox.github.io/pass-generator/" class="cyber-card bg-nebula border border-slate-800 rounded-xl p-6 flex flex-col h-full group outline-none focus:ring-2 focus:ring-stellar cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-slate-900 rounded-lg group-hover:bg-slate-800 transition-colors">
+                    <i data-lucide="shield-check" class="w-6 h-6 text-stellar"></i>
+                </div>
+                <i data-lucide="arrow-up-right" class="w-5 h-5 text-slate-600 group-hover:text-stellar transition-colors"></i>
             </div>
-            <h2 class="text-4xl md:text-5xl font-bold text-white tracking-tight leading-tight">
-                Instrumen Presisi <br />
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-600">Untuk Privasi Digital</span>
-            </h2>
-            <p class="text-gray-400 text-sm md:text-base max-w-lg mx-auto">
-                Koleksi utilitas kriptografis dan sanitasi data yang berjalan murni di dalam memori peramban Anda. Tidak ada pelacakan. Tidak ada intervensi server.
+            <h2 class="text-xl font-semibold text-slate-100 mb-2">Password Generator</h2>
+            <p class="text-slate-400 text-sm flex-grow">
+                Sintesis kata sandi kriptografis yang kuat dan acak untuk mengamankan identitas digital Anda dari serangan peretasan.
             </p>
-        </div>
+        </a>
 
-        <!-- Tools Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
-            
-            <!-- Alat 1: Pass Generator -->
-            <a href="https://utilitibox.github.io/pass-generator/" class="cyber-card bg-gray-900/50 border border-gray-800 rounded-2xl p-6 flex flex-col group relative overflow-hidden text-left cursor-pointer">
-                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
-                    <i class="ph ph-arrow-up-right text-3xl text-neon"></i>
+        <!-- Tool 2: Metadata Remover -->
+        <a href="https://utilitibox.github.io/metadata-remover/" class="cyber-card bg-nebula border border-slate-800 rounded-xl p-6 flex flex-col h-full group outline-none focus:ring-2 focus:ring-stellar cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-slate-900 rounded-lg group-hover:bg-slate-800 transition-colors">
+                    <i data-lucide="eraser" class="w-6 h-6 text-stellar"></i>
                 </div>
-                
-                <div class="w-12 h-12 rounded-xl bg-blue-900/30 border border-blue-800/50 flex items-center justify-center mb-6 text-blue-400 group-hover:text-neon transition-colors">
-                    <i class="ph ph-password text-2xl"></i>
-                </div>
-                
-                <h3 class="text-xl font-semibold text-gray-100 mb-2 font-mono">Entropi <span class="text-neon">Generator</span></h3>
-                <p class="text-sm text-gray-400 mb-6 flex-grow">
-                    Mesin penghasil kata sandi kriptografis tinggi. Sesuaikan parameter entropi untuk membentengi akses dari serangan komputasi paksa (brute-force).
-                </p>
-                
-                <div class="flex items-center space-x-2 text-xs font-mono text-gray-500">
-                    <i class="ph ph-terminal"></i>
-                    <span>utilitibox.github.io/pass-generator/</span>
-                </div>
-            </a>
+                <i data-lucide="arrow-up-right" class="w-5 h-5 text-slate-600 group-hover:text-stellar transition-colors"></i>
+            </div>
+            <h2 class="text-xl font-semibold text-slate-100 mb-2">Metadata Remover</h2>
+            <p class="text-slate-400 text-sm flex-grow">
+                Hapus jejak digital tersembunyi (EXIF, detail perangkat) dari file Anda untuk menjamin anonimitas sebelum didistribusikan.
+            </p>
+        </a>
 
-            <!-- Alat 2: Metadata Remover -->
-            <a href="https://utilitibox.github.io/metadata-remover/" class="cyber-card bg-gray-900/50 border border-gray-800 rounded-2xl p-6 flex flex-col group relative overflow-hidden text-left cursor-pointer">
-                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
-                    <i class="ph ph-arrow-up-right text-3xl text-neon"></i>
+        <!-- Tool 3: Copy-Paste Metadata -->
+        <a href="https://utilitibox.github.io/Copypaste-matadata/" class="cyber-card bg-nebula border border-slate-800 rounded-xl p-6 flex flex-col h-full group outline-none focus:ring-2 focus:ring-stellar cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 bg-slate-900 rounded-lg group-hover:bg-slate-800 transition-colors">
+                    <i data-lucide="copy" class="w-6 h-6 text-stellar"></i>
                 </div>
-                
-                <div class="w-12 h-12 rounded-xl bg-purple-900/30 border border-purple-800/50 flex items-center justify-center mb-6 text-purple-400 group-hover:text-purple-300 transition-colors">
-                    <i class="ph ph-shield-check text-2xl"></i>
-                </div>
-                
-                <h3 class="text-xl font-semibold text-gray-100 mb-2 font-mono">Sanctum <span class="text-purple-400">Eraser</span></h3>
-                <p class="text-sm text-gray-400 mb-6 flex-grow">
-                    Hancurkan jejak digital tersembunyi (EXIF/GPS) dari biner gambar. Memanfaatkan algoritma manipulasi piksel murni di memori sisi klien.
-                </p>
-                
-                <div class="flex items-center space-x-2 text-xs font-mono text-gray-500">
-                    <i class="ph ph-terminal"></i>
-                    <span>utilitibox.github.io/metadata-remover/</span>
-                </div>
-            </a>
+                <i data-lucide="arrow-up-right" class="w-5 h-5 text-slate-600 group-hover:text-stellar transition-colors"></i>
+            </div>
+            <h2 class="text-xl font-semibold text-slate-100 mb-2">Copy-Paste Metadata</h2>
+            <p class="text-slate-400 text-sm flex-grow">
+                Kloning dan transfer struktur data meta dari satu entitas file ke entitas lainnya dengan akurasi mutlak.
+            </p>
+        </a>
 
-        </div>
     </main>
 
     <!-- Footer -->
-    <footer class="relative z-10 border-t border-gray-800/60 mt-auto">
-        <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between text-xs text-gray-600 font-mono">
-            <p>&copy; 2026 UtilitiBox. Operasi otonom.</p>
-            <div class="flex items-center space-x-4">
-                <span class="flex items-center"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2"></div>Sistem Stabil</span>
-            </div>
-        </div>
+    <footer class="mt-16 text-center text-slate-500 text-sm font-mono border-t border-slate-800 pt-6 w-full max-w-4xl">
+        <p>© 2026 UtilitiBox. Sistem Operasional Stabil.</p>
     </footer>
 
+    <!-- Initialize Icons -->
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>
-
 
